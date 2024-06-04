@@ -18,6 +18,21 @@ pub trait DbConfig {
     fn connect_timeout(&self) -> Duration;
 }
 
+
+pub async fn build_pool(cfg: &impl DbConfig) -> Result<PgPool> {
+    let pg_mgr = bb8_postgres::PostgresConnectionManager::new(cfg.uri().as_str().parse()?, tokio_postgres::NoTls);
+
+    bb8::Builder::new()
+        .min_idle(Some(cfg.min()))
+        .max_size(cfg.max())
+        .max_lifetime(Some(cfg.lifetime()))
+        .idle_timeout(Some(cfg.idle_timeout()))
+        .connection_timeout(cfg.connect_timeout())
+        .build(pg_mgr)
+        .await
+        .map_err(|e| anyhow::format_err!("DB POOL FAIL: {}", e))
+}
+
 #[derive(Clone)]
 pub struct ScopedPool {
     pool: HashMap<String, PgPool>,
@@ -31,17 +46,7 @@ impl ScopedPool {
     }
 
     pub async fn reg(&mut self, scope: &str, cfg: &impl DbConfig) -> Result<()> {
-        let pg_mgr = bb8_postgres::PostgresConnectionManager::new(cfg.uri().as_str().parse()?, tokio_postgres::NoTls);
-
-        let pool = bb8::Builder::new()
-            .min_idle(Some(cfg.min()))
-            .max_size(cfg.max())
-            .max_lifetime(Some(cfg.lifetime()))
-            .idle_timeout(Some(cfg.idle_timeout()))
-            .connection_timeout(cfg.connect_timeout())
-            .build(pg_mgr)
-            .await
-            .map_err(|e| anyhow::format_err!("DB POOL FAIL: {}", e))?;
+        let pool = build_pool(cfg).await?;
 
         self.pool.insert(scope.into(), pool);
 
