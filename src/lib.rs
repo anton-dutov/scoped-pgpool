@@ -8,6 +8,7 @@ use anyhow::{format_err, Result};
 pub type PgManager  = bb8_postgres::PostgresConnectionManager<tokio_postgres::NoTls>;
 pub type PgPool     = bb8::Pool<PgManager>;
 pub type PgConn<'a> = bb8::PooledConnection<'a, PgManager>;
+pub type PgError    = tokio_postgres::Error;
 
 pub trait DbConfig {
     fn uri(&self) -> String;
