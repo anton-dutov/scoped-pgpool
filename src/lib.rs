@@ -62,4 +62,12 @@ impl ScopedPool {
         pool.get().await
             .map_err(|e| e.into())
     }
+
+    pub async fn get_pool(&self, scope: &str) -> Result<PgPool> {
+
+        let pool = self.pool.get(scope)
+            .ok_or_else(|| format_err!("SCOPE '{}' ABSENT", scope))?;
+
+        Ok(pool.clone())
+    }
 }
